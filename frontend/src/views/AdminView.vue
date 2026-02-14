@@ -105,6 +105,29 @@
       </div>
 
     </div>
+    
+    <!-- System Logs Section for Path Traversal Vulnerability -->
+    <div class="row mt-4 mb-5">
+      <div class="col-12">
+        <div class="card shadow-sm border-danger">
+           <div class="card-header bg-danger text-white">
+             <h5 class="mb-0"><i class="bi bi-terminal me-2"></i>System Logs (Admin Only)</h5>
+           </div>
+           <div class="card-body">
+             <p class="text-muted small">Enter the filename to view server logs.</p>
+             <div class="input-group mb-3">
+               <span class="input-group-text">Log File</span>
+               <input v-model="logFile" type="text" class="form-control" placeholder="e.g. app.log">
+               <button class="btn btn-secondary" type="button" @click="fetchLogs">View Log</button>
+             </div>
+             <div v-if="logContent" class="bg-light p-3 border rounded overflow-auto" style="max-height: 300px;">
+               <pre class="mb-0">{{ logContent }}</pre>
+             </div>
+           </div>
+        </div>
+      </div>
+    </div>
+
   </div>
 </template>
 
@@ -125,6 +148,21 @@ const bookForm = ref({
   author: '',
   status: 'AVAILABLE'
 })
+
+const logFile = ref('app.log')
+const logContent = ref('')
+
+const fetchLogs = async () => {
+    try {
+        const res = await axios.get('http://localhost:3000/api/admin/logs', {
+            params: { file: logFile.value },
+            withCredentials: true
+        });
+        logContent.value = res.data.content;
+    } catch (err) {
+        logContent.value = 'Error fetching log: ' + (err.response?.data?.message || err.message);
+    }
+}
 
 const fetchUsers = async () => {
   try {

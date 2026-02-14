@@ -27,6 +27,8 @@
                  <i class="bi bi-person-circle"></i> {{ auth.user.username }}
                </a>
                <ul class="dropdown-menu dropdown-menu-end">
+                 <li><router-link class="dropdown-item" to="/profile">My Profile</router-link></li>
+                 <li><hr class="dropdown-divider"></li>
                  <li><a class="dropdown-item" href="#" @click.prevent="auth.logout()">Logout</a></li>
                </ul>
             </li>

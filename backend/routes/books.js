@@ -59,6 +59,32 @@ router.post('/', verifyToken, isAdmin, async (req, res) => {
   }
 });
 
+// Update Book (Admin only)
+router.put('/:id', verifyToken, isAdmin, async (req, res) => {
+  try {
+    const book = await Book.findByPk(req.params.id);
+    if (!book) return res.status(404).json({ message: 'Book not found' });
+    
+    await book.update(req.body);
+    res.json(book);
+  } catch (error) {
+    res.status(400).json({ message: error.message });
+  }
+});
+
+// Delete Book (Admin only)
+router.delete('/:id', verifyToken, isAdmin, async (req, res) => {
+  try {
+    const book = await Book.findByPk(req.params.id);
+    if (!book) return res.status(404).json({ message: 'Book not found' });
+    
+    await book.destroy();
+    res.json({ message: 'Book deleted' });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
 // VULNERABILITY #4: Stored XSS
 // Add a review to a book
 // Upload Book Cover

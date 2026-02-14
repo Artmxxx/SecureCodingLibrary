@@ -21,6 +21,16 @@ export const useAuthStore = defineStore('auth', {
         throw error.response.data.message
       }
     },
+    async register(username, email, password) {
+      try {
+        const response = await axios.post(`${API_URL}/register`, { username, email, password, role: 'USER' })
+        this.user = response.data
+        localStorage.setItem('user', JSON.stringify(this.user))
+        router.push('/')
+      } catch (error) {
+        throw error.response?.data?.message || 'Registration failed'
+      }
+    },
     async logout() {
       await axios.post(`${API_URL}/logout`)
       this.user = null

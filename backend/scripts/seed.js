@@ -1,3 +1,4 @@
+require('dotenv').config();
 const { sequelize, User, Book, Loan } = require('../models');
 
 async function seed() {

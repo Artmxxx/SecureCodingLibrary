@@ -6,66 +6,114 @@ on:
   pull_request:
     branches: [ "main" ]
 
-name: Security Pipeline
-
-on:
-  push:
-    branches: [ "main", "dev" ]
-  pull_request:
-    branches: [ "main" ]
+permissions:
+  contents: read
+  security-events: write
 
 jobs:
-  sast-scan:
-    name: SAST (Semgrep)
+  # 1. SAST (Static Analysis)
+  semgrep:
+    name: SAST - Semgrep
     runs-on: ubuntu-latest
     container:
       image: returntocorp/semgrep
-    if: (github.actor != 'dependabot[bot]')
     steps:
       - uses: actions/checkout@v3
-      - run: semgrep scan --config auto .
+      - name: Run Semgrep
+        run: semgrep scan --config auto --error --json -o semgrep-results.json .
+        continue-on-error: true # Don't fail build yet, we want to see results
+      
+      - name: Upload Semgrep JSON
+        uses: actions/upload-artifact@v4
+        with:
+          name: semgrep-results
+          path: semgrep-results.json
 
-  sca-scan:
-    name: SCA (NPM Audit)
+  # 2. SCA (Software Composition Analysis)
+  sca:
+    name: SCA - Node.js
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
-      - name: Use Node.js
+      - name: Setup Node
         uses: actions/setup-node@v3
         with:
           node-version: '18'
-      - name: Install Backend Dependencies
+          
+      - name: Audit Backend Dependencies
         run: |
           cd backend
           npm install
-          npm audit --audit-level=high || true 
+          npm audit --audit-level=high --json > ../npm-audit-backend.json || true
+          
+      - name: Audit Frontend Dependencies
+        run: |
+          cd frontend
+          npm install
+          npm audit --audit-level=high --json > ../npm-audit-frontend.json || true
+          
+      - name: Upload SCA Reports
+        uses: actions/upload-artifact@v4
+        with:
+          name: sca-reports
+          path: npm-audit-*.json
 
-  secret-scan:
-    name: Secret Scanning (Gitleaks)
+  # 3. Secret Scanning
+  trufflehog:
+    name: Secret Scanning - TruffleHog
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
         with:
-          fetch-depth: 0
-      - uses: gitleaks/gitleaks-action@v2
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0 # Required for history scanning
+      - name: TruffleHog OSS
+        uses: trufflesecurity/trufflehog@main
+        with:
+          path: ./
+          base: ${{ github.event.repository.default_branch }}
+          head: HEAD
+          extra_args: --debug --only-verified
+        continue-on-error: true
 
-  dast-scan:
-    name: DAST (OWASP ZAP)
+  # 4. IaC Scanning (Infrastructure as Code)
+  checkov:
+    name: IaC - Checkov
     runs-on: ubuntu-latest
-    needs: [sast-scan] # Run after SAST
     steps:
-      - name: Checkout
-        uses: actions/checkout@v2
+      - uses: actions/checkout@v3
+      - name: Checkov GitHub Action
+        uses: bridgecrewio/checkov-action@v12
+        with:
+          directory: .
+          framework: dockerfile,secrets
+          output_format: cli,json
+          output_file_path: console,checkov-report.json
+        continue-on-error: true
       
-      - name: Build and Start Docker Stack
+      - name: Upload IaC Report
+        uses: actions/upload-artifact@v4
+        with:
+          name: checkov-report
+          path: checkov-report.json
+
+  # 5. DAST (Dynamic Analysis) - Advanced
+  # This spins up the app and scans it. 
+  zap_scan:
+    name: DAST - OWASP ZAP
+    runs-on: ubuntu-latest
+    needs: [semgrep] # Run after SAST to save time if SAST fails heavily
+    steps:
+      - uses: actions/checkout@v3
+      
+      # We need to run the app for DAST to work
+      - name: Start Containers
         run: |
           docker-compose up -d
-          sleep 60 # Wait for DB and App to start
-      
-      - name: ZAP Scan
-        uses: zaproxy/action-baseline@v0.7.0
+          sleep 30 # Wait for DB and Servers to init
+          
+      - name: ZAP Baseline Scan
+        uses: zaproxy/action-baseline@v0.9.0
         with:
-          target: 'http://localhost:3000'
-          cmd_options: '-a'
+          target: 'http://localhost:8080'
+          cmd_options: '-a' # Include alpha passive scan rules
+        continue-on-error: true

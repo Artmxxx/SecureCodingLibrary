@@ -9,6 +9,8 @@ on:
 permissions:
   contents: read
   security-events: write
+  issues: write
+  pull-requests: write
 
 jobs:
   # 1. SAST (Static Analysis)
@@ -70,9 +72,7 @@ jobs:
         uses: trufflesecurity/trufflehog@main
         with:
           path: ./
-          base: ${{ github.event.repository.default_branch }}
-          head: HEAD
-          extra_args: --debug --only-verified
+          extra_args: --debug --only-verified --no-verification
         continue-on-error: true
 
   # 4. IaC Scanning (Infrastructure as Code)
@@ -116,4 +116,8 @@ jobs:
         with:
           target: 'http://localhost:8080'
           cmd_options: '-a' # Include alpha passive scan rules
-        continue-on-error: true
+        conoken: ${{ secrets.GITHUB_TOKEN }}
+          target: 'http://localhost:8080'
+          rules_file_name: '.zap/rules.tsv'
+          cmd_options: '-a'
+          allow_issue_writing: false # Disable issue creation to avoid repo error

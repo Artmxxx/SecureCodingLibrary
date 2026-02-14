@@ -108,11 +108,11 @@ jobs:
       # We need to run the app for DAST to work
       - name: Start Containers
         run: |
-          docker-compose up -d
+          docker compose up -d --build
           sleep 30 # Wait for DB and Servers to init
           
       - name: ZAP Baseline Scan
-        uses: zaproxy/action-baseline@v0.9.0
+        uses: zaproxy/action-baseline@v0.12.0
         with:
           target: 'http://localhost:8080'
           cmd_options: '-a' # Include alpha passive scan rules

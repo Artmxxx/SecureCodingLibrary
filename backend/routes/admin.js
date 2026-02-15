@@ -4,17 +4,19 @@ const fs = require('fs');
 const path = require('path');
 const { verifyToken, isAdmin } = require('../middleware/auth');
 
-// VULNERABILITY #5: Path Traversal (Medium)
-// Admin can view logs, but the filename is not sanitized.
-// Attack: /api/admin/logs?file=../../.env
+// FIX #5: Path Traversal - Remediated
+// We strictly validate inputs against an allowlist to prevent accessing unauthorized files.
 router.get('/logs', verifyToken, isAdmin, (req, res) => {
     const filename = req.query.file || 'app.log';
     
-    // In a real app, strict validation should be here:
-    // if (!['app.log', 'error.log'].includes(filename)) ...
+    // REMEDIATION: Strict Allowlist
+    const ALLOWED_FILES = ['app.log', 'error.log'];
+    
+    if (!ALLOWED_FILES.includes(filename)) {
+        return res.status(400).json({ message: 'Invalid or unauthorized log file.' });
+    }
 
-    // Flawed implementation: just joining path
-    // The 'logs' directory is assumed to be at the project root or backend root
+    // Since 'filename' is now strictly controlled, path traversal is impossible here.
     const logDir = path.join(__dirname, '../logs');
     
     // Ensure log directory exists for validity

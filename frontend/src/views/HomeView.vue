@@ -20,10 +20,12 @@
     </div>
 
     <div class="container pb-5">
-        <!-- VULNERABILITY #2: Reflected XSS -->
+        <!-- FIX #2: Reflected XSS Remediated -->
+        <!-- We use standard text interpolation {{ }} which Vue automatically escapes -->
+        <!-- The user input will be rendered as plain text, preventing script execution -->
         <div v-if="searchMessage" class="alert alert-light border-start border-4 border-info shadow-sm d-flex align-items-center mb-5" role="alert">
             <i class="bi bi-info-circle-fill text-info me-3 fs-4"></i>
-            <div class="text-dark" v-html="searchMessage"></div>
+            <div class="text-dark">Search results for: <b>{{ searchMessage.replace('Search results for: ', '') }}</b></div>
         </div>
 
         <div v-if="books.length" class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4">

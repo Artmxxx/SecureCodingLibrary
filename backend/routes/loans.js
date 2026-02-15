@@ -50,10 +50,8 @@ router.get('/', verifyToken, async (req, res) => {
   }
 });
 
-// VULNERABILITY #3: IDOR (Insecure Direct Object Reference)
-// Get Loan Details by ID
-// FLAW: We check if user is logged in (verifyToken), but we DO NOT check
-// if the loan actually belongs to the requesting user (req.user.id).
+// FIX #4: IDOR - Remediated
+// We verify that the requesting user owns the loan or is an admin.
 router.get('/:id', verifyToken, async (req, res) => {
   try {
     const loan = await Loan.findByPk(req.params.id, {
@@ -64,10 +62,10 @@ router.get('/:id', verifyToken, async (req, res) => {
       return res.status(404).json({ message: 'Loan not found' });
     }
 
-    // Secure version would be:
-    // if (loan.userId !== req.user.id && req.user.role !== 'ADMIN') {
-    //    return res.status(403).json({ message: 'Unauthorized' });
-    // }
+    // AUTH CHECK: Ensure user owns the resource
+    if (loan.userId !== req.user.id && req.user.role !== 'ADMIN') {
+       return res.status(403).json({ message: 'Unauthorized access to loan details' });
+    }
 
     res.json(loan);
   } catch (error) {

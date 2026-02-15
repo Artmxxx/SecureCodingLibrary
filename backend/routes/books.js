@@ -1,9 +1,11 @@
 const express = require('express');
 const router = express.Router();
 const { Book, Review, User, sequelize } = require('../models');
+const { Op } = require('sequelize'); // FIX #1: Added Sequelize Operators
 const { verifyToken, isAdmin } = require('../middleware/auth');
 const multer = require('multer');
 const path = require('path');
+const sanitizeHtml = require('sanitize-html'); // FIX #3: Added Sanitization Library
 
 // VULNERABILITY #5: Insecure File Upload
 // No file type validation, no filename randomization
@@ -20,25 +22,29 @@ const storage = multer.diskStorage({
 
 const upload = multer({ storage: storage });
 
-// List all books (with Vulnerable Search)
+// List all books (with Secure Search)
 router.get('/', async (req, res) => {
   try {
     const { q } = req.query;
 
     if (q) {
-      // VULNERABILITY #1: SQL Injection
-      // We are directly inserting the user input 'q' into the SQL string.
-      const query = `SELECT * FROM "Books" WHERE title ILIKE '%${q}%' OR author ILIKE '%${q}%'`;
-      const books = await sequelize.query(query, {
-        model: Book,
-        mapToModel: true
+      // FIX #1: SQL Injection Remediated
+      // We rely on Sequelize's built-in parameterization (using Op.iLike)
+      // This automatically escapes the input, preventing SQL injection.
+      const books = await Book.findAll({
+        where: {
+          [Op.or]: [
+            { title: { [Op.iLike]: `%${q}%` } },
+            { author: { [Op.iLike]: `%${q}%` } }
+          ]
+        }
       });
       
-      // VULNERABILITY #2: Reflected XSS preparation
-      // We return the raw input in the message
+      // FIX #2: Reflected XSS (Backend component)
+      // We still return the message, but we will ensure the frontend handles the display safely
       return res.json({
         books: books,
-        message: `Search results for: <b>${q}</b>` 
+        message: `Search results for: ${sanitizeHtml(q)}` // Removed <b> tags, frontend will handle display
       });
     }
 
@@ -105,13 +111,17 @@ router.post('/:id/cover', verifyToken, upload.single('coverImage'), async (req, 
   }
 });
 
-// FLAW: We save the 'content' directly without sanitization.
+// FIX #3: Stored XSS - Remediation
+// We now verify and sanitize the content before storing it in the database.
 router.post('/:id/reviews', verifyToken, async (req, res) => {
   const { content, rating } = req.body;
+  
+  // SANITIZATION: Remove script tags and dangerous attributes
+  const cleanContent = sanitizeHtml(content);
+
   try {
-    // Storing the malicious script
     const review = await Review.create({
-      content,
+      content: cleanContent, // Using the sanitized content
       rating,
       bookId: req.params.id,
       userId: req.user.id

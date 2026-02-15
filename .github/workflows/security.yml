@@ -22,15 +22,15 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       - name: Run Semgrep
-        # Generate BOTH console output (for screenshots) AND JSON (for artifacts)
-        run: semgrep scan --config auto --error --text --json -o semgrep-results.json .
-        continue-on-error: true # Don't fail build yet, we want to see results
-      
-      - name: Upload Semgrep JSON
-        uses: actions/upload-artifact@v4
-        with:
-          name: semgrep-results
-          path: semgrep-results.json
+        # SIMPLIFIED: Run standard scan and print results to console for screenshots.
+        run: semgrep scan --config auto --error .
+        continue-on-error: true
+
+      # - name: Upload Semgrep JSON (Disabled for Screenshot clarity)
+        # uses: actions/upload-artifact@v4
+        # with:
+          # name: semgrep-results
+          # path: semgrep-results.json
 
   # 2. SCA (Software Composition Analysis)
   sca:

@@ -1,100 +1,106 @@
 <template>
-  <div>
-    <h2 class="mb-4">Admin Dashboard</h2>
+  <div class="container py-5">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2 class="fw-bold mb-1">Admin Dashboard</h2>
+            <p class="text-muted mb-0">Manage users, books, and view system logs.</p>
+        </div>
+        <div>
+            <button class="btn btn-outline-dark btn-sm rounded-pill px-3 me-2" @click="fetchUsers">
+                <i class="bi bi-arrow-clockwise me-1"></i> Refresh Data
+            </button>
+        </div>
+    </div>
     
-    <div class="row">
+    <div class="row g-4">
       <!-- User Management Section -->
-      <div class="col-md-6">
-        <div class="card shadow-sm mb-4">
-          <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center">
-             <h5 class="mb-0">Manage Users</h5>
-             <button class="btn btn-sm btn-light" @click="fetchUsers">Refresh</button>
+      <div class="col-lg-5">
+        <div class="card shadow-sm border-0 h-100">
+          <div class="card-header bg-white border-bottom-0 pt-4 px-4 pb-0">
+             <h5 class="fw-bold mb-0 text-primary"><i class="bi bi-people-fill me-2"></i>Users</h5>
           </div>
-          <div class="card-body">
-            <table class="table table-hover">
-              <thead>
-                <tr>
-                  <th>Username</th>
-                  <th>Role</th>
-                  <th>Action</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr v-for="user in users" :key="user.id">
-                  <td>{{ user.username }}</td>
-                  <td><span class="badge" :class="user.role === 'ADMIN' ? 'bg-danger' : 'bg-secondary'">{{ user.role }}</span></td>
-                  <td>
-                    <button v-if="user.username !== 'admin'" class="btn btn-sm btn-danger" @click="deleteUser(user.id)">Delete</button>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
+          <div class="card-body px-4">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle">
+                <thead>
+                    <tr>
+                    <th class="text-uppercase small text-muted">User</th>
+                    <th class="text-uppercase small text-muted">Role</th>
+                    <th class="text-end text-uppercase small text-muted">Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr v-for="user in users" :key="user.id">
+                    <td class="fw-medium">{{ user.username }}</td>
+                    <td>
+                        <span class="badge rounded-pill" :class="user.role === 'ADMIN' ? 'bg-danger-subtle text-danger' : 'bg-light text-dark border'">
+                            {{ user.role }}
+                        </span>
+                    </td>
+                    <td class="text-end">
+                        <button v-if="user.username !== 'admin'" class="btn btn-link text-danger p-0 text-decoration-none" @click="deleteUser(user.id)">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                    </td>
+                    </tr>
+                </tbody>
+                </table>
+            </div>
           </div>
         </div>
       </div>
 
       <!-- Book Management Section -->
-      <div class="col-md-6">
-        <div class="card shadow-sm mb-4">
-          <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
-            <h5 class="mb-0">{{ isEditing ? 'Edit Book' : 'Add New Book' }}</h5>
-            <button v-if="isEditing" class="btn btn-sm btn-light" @click="resetForm">Cancel</button>
+      <div class="col-lg-7">
+        <div class="card shadow-sm border-0 h-100">
+          <div class="card-header bg-white border-bottom-0 pt-4 px-4 pb-0 d-flex justify-content-between align-items-center">
+             <h5 class="fw-bold mb-0 text-success"><i class="bi bi-book-half me-2"></i>Inventory</h5>
+             <button v-if="isEditing" class="btn btn-sm btn-outline-secondary rounded-pill" @click="resetForm">Cancel Edit</button>
           </div>
-          <div class="card-body">
-            <form @submit.prevent="saveBook">
-              <div class="mb-3">
-                <label class="form-label">Title</label>
-                <input v-model="bookForm.title" type="text" class="form-control" required>
+          <div class="card-body px-4">
+            <form @submit.prevent="saveBook" class="row g-3 mb-4 p-3 bg-light rounded-3">
+              <div class="col-md-5">
+                <input v-model="bookForm.title" type="text" class="form-control form-control-sm border-0 shadow-sm" placeholder="Title" required>
               </div>
-              <div class="mb-3">
-                <label class="form-label">Author</label>
-                <input v-model="bookForm.author" type="text" class="form-control" required>
+              <div class="col-md-4">
+                <input v-model="bookForm.author" type="text" class="form-control form-control-sm border-0 shadow-sm" placeholder="Author" required>
               </div>
-               <div class="mb-3">
-                <label class="form-label">Status</label>
-                <select v-model="bookForm.status" class="form-select">
+               <div class="col-md-3">
+                <select v-model="bookForm.status" class="form-select form-select-sm border-0 shadow-sm">
                   <option value="AVAILABLE">Available</option>
                   <option value="LOANED">Loaned</option>
                 </select>
               </div>
-              <button type="submit" class="btn btn-primary w-100">{{ isEditing ? 'Update Book' : 'Add Book' }}</button>
+              <div class="col-12 text-end mt-2">
+                  <button type="submit" class="btn btn-success btn-sm px-4 rounded-pill shadow-sm">
+                      <i class="bi" :class="isEditing ? 'bi-check-lg' : 'bi-plus-lg'"></i>
+                      {{ isEditing ? 'Update Book' : 'Add New Book' }}
+                  </button>
+              </div>
             </form>
-          </div>
-        </div>
-      </div>
-    
-      <!-- Book List Table -->
-      <div class="col-12">
-        <div class="card shadow-sm">
-          <div class="card-header bg-secondary text-white d-flex justify-content-between align-items-center">
-            <h5 class="mb-0">Existing Books</h5>
-            <button class="btn btn-sm btn-light" @click="fetchBooks">Refresh</button>
-          </div>
-          <div class="card-body">
-            <div class="table-responsive">
-              <table class="table table-striped table-hover align-middle">
-                <thead>
+
+            <div class="table-responsive" style="max-height: 400px; overflow-y: auto;">
+              <table class="table table-hover align-middle">
+                <thead class="sticky-top bg-white">
                   <tr>
-                    <th>ID</th>
-                    <th>Title</th>
-                    <th>Author</th>
-                    <th>Status</th>
-                    <th>Actions</th>
+                    <th class="text-uppercase small text-muted">Title</th>
+                    <th class="text-uppercase small text-muted">Author</th>
+                    <th class="text-uppercase small text-muted">Status</th>
+                    <th class="text-end text-uppercase small text-muted">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
                   <tr v-for="book in books" :key="book.id">
-                    <td>{{ book.id }}</td>
-                    <td>{{ book.title }}</td>
-                    <td>{{ book.author }}</td>
+                    <td class="text-truncate" style="max-width: 150px;" :title="book.title">{{ book.title }}</td>
+                    <td class="text-muted small">{{ book.author }}</td>
                     <td>
-                      <span class="badge" :class="book.status === 'AVAILABLE' ? 'bg-success' : 'bg-warning text-dark'">
-                        {{ book.status }}
+                      <span class="badge rounded-pill" :class="book.status === 'AVAILABLE' ? 'bg-success-subtle text-success' : 'bg-warning-subtle text-warning-emphasis'">
+                          {{ book.status }}
                       </span>
                     </td>
-                    <td>
-                      <button class="btn btn-sm btn-primary me-2" @click="editBook(book)">Edit</button>
-                      <button class="btn btn-sm btn-danger" @click="deleteBook(book.id)">Delete</button>
+                    <td class="text-end">
+                      <button class="btn btn-sm btn-link text-primary p-0 me-2" @click="editBook(book)"><i class="bi bi-pencil-square"></i></button>
+                      <button class="btn btn-sm btn-link text-danger p-0" @click="deleteBook(book.id)"><i class="bi bi-trash"></i></button>
                     </td>
                   </tr>
                 </tbody>
@@ -109,19 +115,34 @@
     <!-- System Logs Section for Path Traversal Vulnerability -->
     <div class="row mt-4 mb-5">
       <div class="col-12">
-        <div class="card shadow-sm border-danger">
-           <div class="card-header bg-danger text-white">
-             <h5 class="mb-0"><i class="bi bi-terminal me-2"></i>System Logs (Admin Only)</h5>
-           </div>
+        <div class="card shadow-sm border-0 border-start border-4 border-danger">
            <div class="card-body">
-             <p class="text-muted small">Enter the filename to view server logs.</p>
-             <div class="input-group mb-3">
-               <span class="input-group-text">Log File</span>
-               <input v-model="logFile" type="text" class="form-control" placeholder="e.g. app.log">
-               <button class="btn btn-secondary" type="button" @click="fetchLogs">View Log</button>
+             <div class="d-flex justify-content-between align-items-center mb-3">
+                <h5 class="mb-0 text-danger"><i class="bi bi-terminal-fill me-2"></i>System Internals</h5>
+                <span class="badge bg-danger">ADMIN ONLY</span>
              </div>
-             <div v-if="logContent" class="bg-light p-3 border rounded overflow-auto" style="max-height: 300px;">
-               <pre class="mb-0">{{ logContent }}</pre>
+             
+             <div class="row align-items-end">
+                 <div class="col-md-8">
+                    <label class="form-label small text-muted">Log Filename Parameter</label>
+                    <div class="input-group">
+                        <span class="input-group-text bg-white border-end-0"><i class="bi bi-file-earmark-code text-muted"></i></span>
+                        <input v-model="logFile" type="text" class="form-control border-start-0" placeholder="e.g. app.log">
+                    </div>
+                 </div>
+                 <div class="col-md-4">
+                     <button class="btn btn-secondary w-100" type="button" @click="fetchLogs">
+                         <i class="bi bi-eye me-2"></i>View Content
+                     </button>
+                 </div>
+             </div>
+
+             <div v-if="logContent" class="mt-3 bg-dark text-white p-3 rounded font-monospace small shadow-inner" style="max-height: 300px; overflow: auto;">
+                 <div class="d-flex justify-content-between border-bottom border-secondary pb-2 mb-2">
+                     <span>{{ logFile }}</span>
+                     <span class="text-muted">READ-ONLY</span>
+                 </div>
+                 <pre class="mb-0 text-success">{{ logContent }}</pre>
              </div>
            </div>
         </div>
@@ -241,3 +262,9 @@ onMounted(() => {
   fetchBooks()
 })
 </script>
+
+<style scoped>
+.shadow-inner {
+    box-shadow: inset 0 2px 4px 0 rgba(0, 0, 0, 0.25);
+}
+</style>

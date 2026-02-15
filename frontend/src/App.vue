@@ -1,9 +1,9 @@
 <template>
   <div id="app" class="d-flex flex-column min-vh-100">
-    <nav class="navbar navbar-expand-lg navbar-dark bg-primary shadow-sm mb-4" v-if="!$route.meta.hideNav">
+    <nav class="navbar navbar-expand-lg navbar-dark sticky-top shadow-sm py-3" v-if="!$route.meta.hideNav">
       <div class="container">
-        <router-link class="navbar-brand d-flex align-items-center" to="/">
-          <i class="bi bi-book-half me-2"></i> Secure Library
+        <router-link class="navbar-brand d-flex align-items-center fw-bold text-uppercase" to="/" style="letter-spacing: 1px;">
+          <i class="bi bi-journal-bookmark-fill me-2 fs-4"></i> LibSecure
         </router-link>
         <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
           <span class="navbar-toggler-icon"></span>
@@ -36,13 +36,17 @@
         </div>
       </div>
     </nav>
-    <div class="container flex-grow-1">
+    <div class="flex-grow-1">
       <router-view />
     </div>
     
-    <footer class="bg-light text-center text-lg-start mt-auto py-3 border-top">
-      <div class="container text-center text-muted">
-        <small>&copy; 2026 Secure Coding Library. All rights reserved.</small>
+    <footer class="bg-dark text-white text-center py-4 mt-auto">
+      <div class="container">
+        <div class="mb-3">
+          <i class="bi bi-journal-bookmark-fill fs-3 text-secondary"></i>
+        </div>
+        <p class="mb-1 fw-bold">LibSecure System</p>
+        <small class="text-white-50">&copy; 2026 Secure Coding Library. Designed for Security Training.</small>
       </div>
     </footer>
   </div>
@@ -54,11 +58,5 @@ const auth = useAuthStore()
 </script>
 
 <style>
-body {
-  background-color: #f0f2f5;
-  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-}
-.navbar-brand {
-  font-weight: 600;
-}
+/* Global overrides handled in main.css */
 </style>

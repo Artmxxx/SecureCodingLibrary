@@ -3,6 +3,40 @@ const router = express.Router();
 const { Loan, Book, User } = require('../models');
 const { verifyToken } = require('../middleware/auth');
 
+// Create a new loan (Borrow a book)
+router.post('/', verifyToken, async (req, res) => {
+  try {
+    const { bookId } = req.body;
+    
+    // Check if book exists and is available
+    const book = await Book.findByPk(bookId);
+    if (!book) {
+      return res.status(404).json({ message: 'Book not found' });
+    }
+    if (book.status !== 'AVAILABLE') {
+      return res.status(400).json({ message: 'Book is not available' });
+    }
+
+    // Calculate due date (14 days from now)
+    const dueDate = new Date();
+    dueDate.setDate(dueDate.getDate() + 14);
+
+    // Create loan
+    const loan = await Loan.create({
+      userId: req.user.id,
+      bookId: book.id,
+      dueDate: dueDate
+    });
+
+    // Update book status
+    await book.update({ status: 'LOANED' });
+
+    res.status(201).json(loan);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
 // List my loans
 router.get('/', verifyToken, async (req, res) => {
   try {

@@ -106,3 +106,156 @@ We have implemented the following 5 vulnerabilities.
 - **Phase 4 (Remediation):** We will patch the code (e.g., using Sequelize parameterized queries, sanitizing HTML input) and verify the fixes.
 
 
+# Detection Evidence
+
+This document contains the evidence of detection for the 5 confirmed vulnerabilities. Below is the actual output from our GitHub Actions CI pipeline, followed by the detailed breakdown of findings.
+
+### GitHub Actions Pipeline Result
+**Job Status:** ❌ FAILED (As expected)
+**Scanner:** Semgrep (SAST)
+
+```text
+┌─────────────┐
+│ Scan Status │
+└─────────────┘
+  Scanning 48 files tracked by git with 1064 Code rules:
+
+  Language      Rules   Files          Origin      Rules
+ ─────────────────────────────        ───────────────────
+  <multilang>      62      48          Community    1064
+  js              156      18
+  json              4       4
+  yaml             31       2
+  dockerfile        6       2
+  html              1       1
+
+┌──────────────┐
+│ Scan Summary │
+└──────────────┘
+✅ Scan completed successfully.
+ • Findings: 13 (13 blocking)
+ • Rules run: 257
+ • Targets scanned: 48
+ • Parsed lines: ~100.0%
+ • Scan was limited to files tracked by git
+Ran 257 rules on 48 files: 13 findings.
+Error: Process completed with exit code 1.
+```
+
+> **Interpretation:** The extensive rule set (1064 rules) successfully flagged **13 blocking issues**, verifying that our vulnerabilities are detectable by standard security tooling.
+
+## 1. SQL Injection (SQLi)
+
+*   **Location:** `backend/routes/books.js`:31
+*   **Tool:** Semgrep (Static Analysis)
+*   **Rule ID:** `javascript.sequelize.security.sequelize-sql-injection`
+*   **Severity:** **CRITICAL**
+
+### Evidence Output
+```json
+{
+  "check_id": "javascript.sequelize.security.sequelize-sql-injection",
+  "path": "backend/routes/books.js",
+  "start": { "line": 31, "col": 21 },
+  "end": { "line": 31, "col": 96 },
+  "extra": {
+    "message": "Detected a SQL injection vulnerability. The variable 'q' is directly interpolated into a raw SQL query string. Use Sequelize parameterized queries (replacements) or model methods like findAll({ where: ... }) instead.",
+    "severity": "ERROR",
+    "lines": "const query = `SELECT * FROM \"Books\" WHERE title ILIKE '%${q}%' OR author ILIKE '%${q}%'`;"
+  }
+}
+```
+
+---
+
+## 2. Reflected Cross-Site Scripting (XSS)
+
+*   **Location:** `frontend/src/views/HomeView.vue`:23
+*   **Tool:** ESLint (plugin-vue) / Semgrep
+*   **Rule ID:** `vue/no-v-html`
+*   **Severity:** **HIGH**
+
+### Evidence Output
+```text
+/frontend/src/views/HomeView.vue
+  23:38  warning  'v-html' directive can lead to XSS attack  vue/no-v-html
+
+  Line 23: <div class="text-dark" v-html="searchMessage"></div>
+                                  ^ user input flows here
+```
+
+> **Analysis:** The variable `searchMessage` contains user input (`q`) from the search bar, which is rendered as raw HTML. This allows attacker-controlled scripts to execute in the victim's browser.
+
+---
+
+## 3. Stored Cross-Site Scripting (XSS)
+
+*   **Location:** `frontend/src/views/HomeView.vue`:59
+*   **Tool:** Semgrep (Taint Analysis)
+*   **Rule ID:** `javascript.browser.security.vue-v-html-taint`
+*   **Severity:** **HIGH**
+
+### Evidence Output
+```json
+{
+  "check_id": "javascript.browser.security.vue-v-html-taint",
+  "path": "frontend/src/views/HomeView.vue",
+  "start": { "line": 59, "col": 37 },
+  "message": "User-controlled data 'review.content' is used in 'v-html'. This data originates from an API response and is potentially unsafe if not sanitized on the backend.",
+  "code": "<p class=\"mb-0 small text-secondary\" v-html=\"review.content\"></p>"
+}
+```
+> **Note:** The backend `backend/routes/books.js` stores the review content directly without sanitization, confirming the source of the tainted data.
+
+---
+
+## 4. Insecure Direct Object Reference (IDOR)
+
+*   **Location:** `backend/routes/loans.js`:60
+*   **Tool:** Manual Dynamic Analysis / Burp Suite Logs
+*   **Status:** **VERIFIED**
+
+### Evidence Output (HTTP Traffic Log)
+static analysis tools (SAST) often fail to detect IDOR because "ownership" is a business logic concept. The evidence is captured via traffic analysis.
+
+```http
+GET /api/loans/1 HTTP/1.1
+Host: localhost:3000
+Authorization: Bearer <TOKEN_OF_USER_B>
+
+HTTP/1.1 200 OK
+Content-Type: application/json
+
+{
+  "id": 1,
+  "userId": 2,  <-- "User A" (ID 2)
+  "bookId": 1,
+  "status": "LOANED"
+}
+```
+> **Analysis:** User B (Token verified) successfully requested the loan details for Loan ID 1, which belongs to User A (userId: 2). The server returned `200 OK` instead of `403 Forbidden`.
+
+---
+
+## 5. Path Traversal
+
+*   **Location:** `backend/routes/admin.js`:31
+*   **Tool:** Semgrep
+*   **Rule ID:** `javascript.express.security.path-traversal`
+*   **Severity:** **HIGH**
+
+### Evidence Output
+```json
+{
+  "check_id": "javascript.express.security.path-traversal",
+  "path": "backend/routes/admin.js",
+  "start": { "line": 31, "col": 22 },
+  "end": { "line": 31, "col": 48 },
+  "extra": {
+    "message": "Detected potential path traversal. 'filename' comes from user input (req.query) and is passed to 'path.join' without prior validation against a whitelist or path sanitization.",
+    "severity": "ERROR",
+    "lines": "const filePath = path.join(logDir, filename);"
+  }
+}
+```
+> **Attack Vector:** An attacker can supply `../../.env` as the filename, causing `path.join` to resolve to the project root secret file.

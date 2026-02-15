@@ -1,99 +1,138 @@
 # Secure Coding Library App
 
 ## 1. Project Overview
-This project is a functional **Library Management System** built to demonstrate the full **Secure Software Development Lifecycle (SSDLC)**. 
+This project is a functional **Library Management System** built to demonstrate the full **Secure Software Development Lifecycle (SSDLC)**. The application allows users to browse books, write reviews, and borrow items, while administrators can manage the inventory and view system logs.
 
 The application was intentionally built with **5 critical security vulnerabilities** to practice detection, exploitation, and remediation.
 
-**Theme:** Library (Books, Reviews, Loans)  
-**Stack:** Node.js, Express, PostgreSQL, Vue.js, Docker.
+### Technical Stack
+-   **Backend:** Node.js, Express, Sequelize ORM
+-   **Frontend:** Vue.js (served via Nginx/Node)
+-   **Database:** PostgreSQL 15
+-   **Infrastructure:** Docker & Docker Compose
+-   **CI/CD:** GitHub Actions (Semgrep, TruffleHog, Checkov)
 
 ---
 
-## 2. Branch Structure
-This repository contains two primary branches representing the security state of the application:
+## 2. Vulnerabilities Implemented
 
-*   🔴 **`main` (Vulnerable Version):**  
-    The original codebase containing all 5 vulnerabilities. Use this branch to demonstrate exploits and test detection tools.
+The following vulnerabilities have been implemented for educational purposes:
 
-*   🟢 **`secure-fix` (Secure Version):**  
-    The hardened codebase where all vulnerabilities have been remediated. Use this branch to verify fixes and pass security scans.
-
----
-
-## 3. Vulnerabilities Implemented
-| # | Vulnerability | Category | Difficulty | Location |
+| # | Vulnerability | Category | Location | Difficulty |
 |---|---|---|---|---|
-| 1 | **SQL Injection** | Injection | Easy | `backend/routes/books.js` |
-| 2 | **Reflected XSS** | Injection | Easy | `frontend/src/views/HomeView.vue` |
-| 3 | **Stored XSS** | Injection | Medium | `backend/routes/books.js` |
-| 4 | **IDOR** | Broken Access Control | Easy | `backend/routes/loans.js` |
-| 5 | **Path Traversal** | Broken Access Control | Medium | `backend/routes/admin.js` |
-
-*See `docs/report/final-report.md` for detailed analysis.*
+| **1** | **SQL Injection** | Injection | `backend/routes/books.js` (Search) | Easy |
+| **2** | **Reflected XSS** | Injection | `frontend/src/views/HomeView.vue` | Easy |
+| **3** | **Stored XSS** | Injection | `backend/routes/books.js` (Reviews) | Medium |
+| **4** | **IDOR** | Access Control | `backend/routes/loans.js` (Get Loan) | Easy |
+| **5** | **Path Traversal** | Access Control | `backend/routes/admin.js` (Logs) | Medium |
 
 ---
 
-## 4. Getting Started
+## 3. How to Run the Application (Docker)
 
-### Prerequisites
-*   Docker & Docker Compose
-*   Node.js 18+ (for local testing)
+This repository contains two primary branches. You can switch between them to see the "Vulnerable" state and the "Secure" state.
 
-### Installation & Running
-1.  **Clone the repository:**
+### A. Run the VULNERABLE Version (`main`)
+Use this branch to demonstrate exploits and test detection tools.
+
+1.  **Switch to the branch:**
     ```bash
-    git clone <repo-url>
-    cd SecureCodingLibrary
+    git checkout main
     ```
-
-2.  **Start the Application (Docker):**
+2.  **Start the containers:**
     ```bash
-    docker-compose up --build
+    docker-compose down -v --remove-orphans  # Clean up old containers
+    docker-compose build
+    docker-compose up -d
     ```
-
-3.  **Seed the Database (Required for Login):**
-    Open a new terminal and run:
+3.  **Seed the Database (Required):**
     ```bash
     docker exec securecodinglibrary-backend-1 npm run seed
     ```
-
 4.  **Access the App:**
-    *   **Frontend:** `http://localhost:8080`
-    *   **Backend API:** `http://localhost:3000`
+    -   Frontend: [http://localhost:8080](http://localhost:8080)
+    -   Backend API: [http://localhost:3000](http://localhost:3000)
 
-### Demo Credentials
-After running the seed command:
-*   **Admin:** `admin` / `admin123`
-*   **User:** `user` / `user123`
+### B. Run the SECURE Version (`secure-fix`)
+Use this branch to verify fixes and pass security scans.
+
+1.  **Switch to the branch:**
+    ```bash
+    git checkout secure-fix
+    ```
+2.  **Start the containers:**
+    ```bash
+    docker-compose down -v --remove-orphans
+    docker-compose build
+    docker-compose up -d
+    ```
+3.  **Seed the Database (Required):**
+    ```bash
+    docker exec securecodinglibrary-backend-1 npm run seed
+    ```
+4.  **Access the App:**
+    -   Frontend: [http://localhost:8080](http://localhost:8080)
 
 ---
 
-## 5. Security Verification
+## 4. How to Run Tests (Verification)
 
-### Running Vulnerability Regression Tests
-We have included a Jest test suite that attempts to exploit the vulnerabilities.
+We have included a Jest test suite `tests/vulnerability_check.test.js` that attempts to exploit the vulnerabilities.
 
-**On `main` branch:** Tests should **PASS** (confirming exploits work).  
-**On `secure-fix` branch:** Tests should **FAIL** (confirming exploits are blocked).
-
+**Command:**
 ```bash
-# Run tests inside the container
 docker exec securecodinglibrary-backend-1 npm test
 ```
 
-### Running Security Scans
-This project uses GitHub Actions for automated security scanning.
-*   **SAST:** Semgrep
-*   **IaC:** Checkov
-*   **DAST:** OWASP ZAP
+### Expected Results
 
-Check the "Actions" tab in GitHub to see the pipeline results.
+*   **On `main` (Vulnerable):**
+    *   Tests should **PASS**.
+    *   This confirms the exploits *succeeded*, proving the app is vulnerable.
+
+*   **On `secure-fix` (Secure):**
+    *   Tests should **FAIL** (specifically, receive 403 Forbidden, 400 Bad Request, or sanitized output).
+    *   This confirms the exploits *failed*, proving the app is secure.
 
 ---
 
-## 6. Deliverables
+## 5. Demo Credentials
+
+The database is seeded with the following users:
+
+| Role | Username | Email | Password |
+|---|---|---|---|
+| **Admin** | `admin` | `admin@library.com` | `password123` |
+| **User** | `alice` | `alice@library.com` | `password123` |
+| **User** | `bob` | `bob@library.com` | `password123` |
+
+---
+
+## 6. API Documentation
+
+### Auth
+*   `POST /api/auth/register` - Create account
+*   `POST /api/auth/login` - Login (Returns cookie)
+*   `POST /api/auth/logout` - Logout
+
+### Books
+*   `GET /api/books?q=...` - Search books (Vulnerable to SQLi/XSS)
+*   `POST /api/books/:id/reviews` - Add review (Vulnerable to Stored XSS)
+*   `GET /api/books/:id/reviews` - Get reviews
+
+### Loans
+*   `POST /api/loans` - Borrow a book
+*   `GET /api/loans` - List my loans
+*   `GET /api/loans/:id` - Get loan details (Vulnerable to IDOR)
+
+### Admin
+*   `GET /api/admin/logs?file=...` - Read server logs (Vulnerable to Path Traversal)
+
+---
+
+## 7. Project Deliverables
 *   **Source Code:** `backend/`, `frontend/`
 *   **Infrastructure:** `Dockerfile`, `docker-compose.yml`
 *   **CI Configuration:** `.github/workflows/security.yml`
 *   **Documentation:** `docs/report/`
+

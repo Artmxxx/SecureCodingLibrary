@@ -22,8 +22,8 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       - name: Run Semgrep
-        # CHANGED: Removed '--json' output so findings print directly to the Console Log for screenshots.
-        run: semgrep scan --config auto --error .
+        # Generate BOTH console output (for screenshots) AND JSON (for artifacts)
+        run: semgrep scan --config auto --error --text --json -o semgrep-results.json .
         continue-on-error: true # Don't fail build yet, we want to see results
       
       - name: Upload Semgrep JSON
